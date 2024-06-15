@@ -1,0 +1,37 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - feature/*
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy CloudFormation Stack
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          BRANCH_SHA=$(git rev-parse --short ${GITHUB_SHA})
+          aws cloudformation deploy \
+            --stack-name "gotestv2-stack" \
+            --template-file ecs-ecr-setup.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              FeatureBranch=${BRANCH_NAME} \
+              BranchSha=${BRANCH_SHA} \
+              ECSClusterName=gotestv2-ecscluster \
+              ECSServiceName=gotestv2-ecservice \
+              ContainerName=gotestv2-container \
+              ECRRepositoryName=gotestv2-ecr

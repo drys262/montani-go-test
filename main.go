@@ -12,5 +12,10 @@ func main() {
             "message": "Hello World Release V1",
         })
     })
+    app.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "healthy",
+		})
+	})
     app.Run(":8080")
 }
