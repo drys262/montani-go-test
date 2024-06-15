@@ -9,7 +9,7 @@ func main() {
     app := gin.Default()
     app.GET("/", func(c *gin.Context) {
         c.JSON(http.StatusOK, gin.H{
-            "message": "Hello World Feature",
+            "message": "Hello World Feature Branch V2", 
         })
     })
     app.GET("/health", func(c *gin.Context) {

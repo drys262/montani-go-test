@@ -282,8 +282,3 @@ Outputs:
     Value: !GetAtt NetworkLoadBalancer.DNSName
     Export:
       Name: !Sub "${AWS::StackName}-LoadBalancerDNSName"
-  TaskDefinitionStaticIP:
-    Condition: UseFeatureBranchName
-    Value: !GetAtt ECSTaskDefinition.NetworkInterfaces
-    Export:
-      Name: TaskDefinitionStaticIP
