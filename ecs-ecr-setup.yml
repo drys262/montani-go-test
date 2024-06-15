@@ -21,6 +21,11 @@ Parameters:
     Description: ECR repo name
     Type: String
     Default: gotestv2-ecr
+  
+  Environment:
+    Description: Environment
+    Type: String
+    Default: dev
 
 Resources:
   VPC:
@@ -112,7 +117,7 @@ Resources:
   NetworkLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: gotestv2-nlb
+      Name: !Sub "${Environment}-gotestv2-nlb"
       Scheme: internet-facing
       Subnets:
         - !Ref PublicSubnet1
@@ -122,7 +127,7 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: gotestv2-tg
+      Name: !Sub "${Environment}-gotestv2-tg"
       Port: 8080
       Protocol: TCP
       VpcId: !Ref VPC
