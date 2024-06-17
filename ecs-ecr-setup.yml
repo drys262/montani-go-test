@@ -27,6 +27,22 @@ Parameters:
     Type: String
     Default: dev
 
+  FeatureBranch:
+    Description: Feature branch name
+    Type: String
+    Default: dev
+
+  BranchSha:
+    Description: Feature branch name
+    Type: String
+    Default: dev
+
+Conditions:
+  UseFeatureBranchName: 
+    !Not [ !Equals [ !Ref FeatureBranch, "" ] ]
+  UseBranchSha: 
+    !Not [!Equals [!Ref BranchSha, ""]]
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -117,7 +133,12 @@ Resources:
   NetworkLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub "${Environment}-gotestv2-nlb"
+      Name: !Sub 
+        - "${Name}-gotestv2-nlb"
+        - Name: !If 
+          - UseFeatureBranchName
+          - !Ref FeatureBranch
+          - !Ref Environment
       Scheme: internet-facing
       Subnets:
         - !Ref PublicSubnet1
@@ -127,12 +148,23 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub "${Environment}-gotestv2-tg"
+      Name: !Sub 
+        - "${Name}-gotestv2-tg"
+        - Name: !If 
+          - UseFeatureBranchName
+          - !Ref FeatureBranch
+          - !Ref Environment
       Port: 8080
       Protocol: TCP
       VpcId: !Ref VPC
       TargetType: ip
-      HealthCheckProtocol: TCP
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: "8080"
+      HealthCheckPath: "/health"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -177,6 +209,7 @@ Resources:
                   - "ecr:GetAuthorizationToken" 
                   - "logs:DescribeLogStreams"
                   - "logs:DescribeLogGroups"
+                  - "logs:CreateLogGroup"
                 Resource: "*"
   
   ECSTaskDefinition:
@@ -191,7 +224,11 @@ Resources:
       Memory: "512"
       ContainerDefinitions:
         - Name: !Ref ContainerName
-          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepositoryName}:latest"
+          Image: 
+            Fn::If:
+              - UseBranchSha
+              - !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepositoryName}:${BranchSha}"
+              - !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepositoryName}:latest"
           Essential: true
           PortMappings:
             - Name: gotestv2-container-8080-tcp
@@ -202,7 +239,12 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: /ecs/gotestv2-container
+              awslogs-group: !Sub
+                - /ecs/${Name}-gotestv2-container
+                - Name: !If
+                    - UseFeatureBranchName
+                    - !Ref FeatureBranch
+                    - !Ref Environment
               awslogs-create-group: "true"
               awslogs-region: us-east-1
               awslogs-stream-prefix: ecs
@@ -210,7 +252,12 @@ Resources:
   ECSService:
     Type: AWS::ECS::Service
     Properties:
-      ServiceName: !Ref ECSServiceName
+      ServiceName: !Sub 
+        - "${Name}-gotestv2-ecservice"
+        - Name: !If 
+          - UseFeatureBranchName
+          - !Ref FeatureBranch
+          - !Ref Environment
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref ECSTaskDefinition
       DesiredCount: 1
